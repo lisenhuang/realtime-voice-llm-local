@@ -20,6 +20,10 @@ OAuth uses system-browser login, a temporary listener bound only to `127.0.0.1`,
 
 In ChatGPT mode, conversation text and tool results go to OpenAI. Speech recognition, voice activity detection, Kokoro and microphone audio remain local. Streaming cloud requests and queued speech are cancelled when you interrupt. Search and arithmetic tools still execute on the Mac. No shell or file-access tools are exposed.
 
+**Reasoning level** in Call settings lists the selected model's supported public API efforts. Choose Low for lighter reasoning, or a higher level when useful. Model default leaves the effort parameter unset. Choices are saved separately for each account and model and apply to the next reply, including every tool pass, without clearing the conversation. Unsupported or removed choices fall back to Model default.
+
+Weather questions use a dedicated Open-Meteo tool to resolve the requested location and retrieve current modelled conditions plus seven daily forecasts. Returned data includes local dates, timezone, units and source attribution. Missing values are not converted to zero. It follows the Web search permission toggle. The free Open-Meteo endpoint is for this personal, non-commercial prototype; commercial distribution needs an appropriate plan. General search and page-reading remain available, with instructions to try another relevant source when the first one fails.
+
 Both providers receive instructions to interpret speech transcripts using conversation context, quietly resolve obvious misheard words, and ask a brief clarification if the meaning remains uncertain. They do not critique pronunciation unless asked.
 
 ## Features
@@ -32,7 +36,7 @@ Both providers receive instructions to interpret speech transcripts using conver
 - Immediate playback stop, queue invalidation and cancellation of old model tasks on interruption.
 - Interrupted history uses played text plus an estimate of the partially played phrase, rather than the entire unspoken generation.
 - Four selectable voices, speaking speed, mute, typed input, copy transcript and clear conversation.
-- Local arithmetic and date/time tools; optional DuckDuckGo HTML search and public HTTPS page reading.
+- Local arithmetic and date/time tools; optional Open-Meteo weather, DuckDuckGo HTML search and public HTTPS page reading.
 - Read-only tool allowlist, strict arithmetic parser, bounded tool loops, network timeouts and response limits.
 
 In Local Qwen mode, all model inference stays in the app. Web search sends the query to DuckDuckGo and reading a result contacts that site. Choose **Local Qwen** and disable **Web search** for offline conversations once model assets are cached. Search may be blocked by the provider; the app reports failure rather than fabricating results. No API key, Ollama, external server or Python runtime is needed.

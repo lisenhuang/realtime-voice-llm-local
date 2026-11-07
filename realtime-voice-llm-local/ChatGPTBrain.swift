@@ -24,15 +24,17 @@ struct ResponseEvents {
     }
 }
 actor ChatGPTBrain {
-    static func requestBody(model: String, input: [[String: Any]], web: Bool) -> [String: Any] {
+    static func requestBody(model: String, input: [[String: Any]], web: Bool, reasoningEffort: String? = nil) -> [String: Any] {
         let functions: [[String: Any]] = LocalTools.specifications(web: web).compactMap { spec in
             guard let function = spec["function"] as? [String: any Sendable] else { return nil }
             var definition = function as [String: Any]; definition["type"] = "function"; definition["strict"] = true
             return definition
         }
-        return ["model": model, "instructions": VoiceInstructions.text, "input": input, "store": false, "stream": true,
+        var body: [String: Any] = ["model": model, "instructions": VoiceInstructions.text + " Your selected text model is \(model), provided by OpenAI. You may state this model identifier when asked.", "input": input, "store": false, "stream": true,
                 "include": ["reasoning.encrypted_content"],
                 "tools": [["type": "namespace", "name": "local", "description": "Read-only tools run on the user's Mac.", "tools": functions]]]
+        if let reasoningEffort, ChatGPTModel.apiReasoningLevels.contains(reasoningEffort) { body["reasoning"] = ["effort": reasoningEffort] }
+        return body
     }
     static func input(prompt: String, history: [TranscriptLine]) -> [[String: Any]] {
         var input: [[String: Any]] = []
@@ -49,12 +51,12 @@ actor ChatGPTBrain {
         guard item["type"] as? String == "function_call", let id = item["call_id"] as? String, !id.isEmpty,
               let name = item["name"] as? String,
               item["namespace"] == nil || item["namespace"] as? String == "local",
-              (web ? ["calculate", "get_current_time", "search_web", "read_webpage"] : ["calculate", "get_current_time"]).contains(name),
+              (web ? ["calculate", "get_current_time", "search_web", "read_webpage", "get_weather"] : ["calculate", "get_current_time"]).contains(name),
               let raw = item["arguments"] as? String, raw.utf8.count <= 16000,
               let arguments = try JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any] else { throw VoiceError("ChatGPT requested an unavailable or invalid tool.") }
         return try JSONDecoder().decode(ToolCall.self, from: JSONSerialization.data(withJSONObject: ["id": id, "function": ["name": name, "arguments": arguments]]))
     }
-    func respond(prompt: String, history: [TranscriptLine], webEnabled: Bool, account: ChatGPTAccount, profile: String, model: String,
+    func respond(prompt: String, history: [TranscriptLine], webEnabled: Bool, account: ChatGPTAccount, profile: String, model: String, reasoningEffort: String? = nil,
                  onToken: @escaping @Sendable (String) async -> Void, onTool: @escaping @Sendable (String) async -> Void) async throws {
         var input = Self.input(prompt: prompt, history: history)
         var usedTools = 0
@@ -62,7 +64,7 @@ actor ChatGPTBrain {
             try Task.checkCancellation()
             let token = try await account.accessToken(for: profile)
             try Task.checkCancellation()
-            let body = Self.requestBody(model: model, input: input, web: webEnabled)
+            let body = Self.requestBody(model: model, input: input, web: webEnabled, reasoningEffort: reasoningEffort)
             let output = try await stream(body: body, token: token, onToken: onToken)
             let calls = output.filter { $0["type"] as? String == "function_call" }
             if calls.isEmpty { return }

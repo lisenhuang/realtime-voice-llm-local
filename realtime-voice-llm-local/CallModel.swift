@@ -251,6 +251,7 @@ final class CallModel {
             } catch is CancellationError { }
               catch { if self.turnID == turn { self.error = "Voice playback failed: \(error.localizedDescription)"; self.synthesisFinished = true; self.finishIfIdle() } }
         }
+        let chosenReasoning = chatGPT.reasoningEffort
         responseTask = Task { [weak self] in
             guard let self else { return }
             let accumulator = ResponsePhrases()
@@ -262,7 +263,7 @@ final class CallModel {
                 let onTool: @Sendable (String) async -> Void = { [weak self] label in await self?.toolStarted(label, turn: turn) }
                 if self.provider == .chatGPT {
                     try await self.cloudBrain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
-                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, onToken: onToken, onTool: onTool)
+                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, reasoningEffort: chosenReasoning, onToken: onToken, onTool: onTool)
                 } else {
                     try await self.brain.respond(prompt: text, history: previous, webEnabled: self.webEnabled, onToken: onToken, onTool: onTool)
                 }

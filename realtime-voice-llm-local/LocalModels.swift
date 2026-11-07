@@ -107,7 +107,7 @@ actor LocalBrain {
             remaining -= clipped.count
             previous.insert(line.role == "user" ? .user(clipped) : .assistant(clipped), at: 0)
         }
-        let instructions = VoiceInstructions.text
+        let instructions = VoiceInstructions.text + " Your text model is Qwen3.5 4B, running locally on this Mac."
         let key = historyKey(history)
         let reuse = cachedSession != nil && cachedHistory == key && cachedWeb == webEnabled && cachedTurns < 4
         var reusableSession = reuse ? cachedSession : nil

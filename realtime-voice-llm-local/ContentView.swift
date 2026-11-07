@@ -138,7 +138,7 @@ struct ContentView: View {
                     Spacer()
                     Toggle("Web search", isOn: $model.webEnabled).labelsHidden().toggleStyle(.switch).controlSize(.mini).tint(mint)
                 }
-                Text(model.provider == .chatGPT ? "Text is sent to OpenAI. Speech stays on your Mac." : (model.webEnabled ? "Only search queries and page requests go online." : "Offline conversation. No web requests during calls."))
+                Text(model.provider == .chatGPT ? "Text is sent to OpenAI. Speech stays on your Mac." : (model.webEnabled ? "Only searches, weather lookups and page requests go online." : "Offline conversation. No web requests during calls."))
                     .font(.system(size: 10)).foregroundStyle(.white.opacity(0.45)).frame(maxWidth: .infinity, alignment: .leading)
             }.padding(17).background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
         }.padding(28)

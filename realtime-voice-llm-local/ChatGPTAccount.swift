@@ -5,6 +5,21 @@ import Observation
 struct ChatGPTModel: Identifiable, Sendable {
     let id: String
     let name: String
+    var reasoningLevels: [String] = []
+    static let apiReasoningLevels: Set<String> = ["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+    func resolvedEffort(_ choice: String) -> String? { reasoningLevels.contains(choice) ? choice : nil }
+    static func effortLabel(_ effort: String) -> String {
+        switch effort {
+        case "none": return "None"
+        case "minimal": return "Minimal"
+        case "low": return "Low"
+        case "medium": return "Medium"
+        case "high": return "High"
+        case "xhigh": return "Extra high"
+        case "max": return "Maximum"
+        default: return "Model default"
+        }
+    }
 }
 struct ChatGPTProfile: Identifiable, Sendable {
     let id: String
@@ -73,7 +88,15 @@ enum ChatGPTHTTP {
 @Observable @MainActor
 final class ChatGPTAccount {
     var profiles: [ChatGPTProfile] = []
-    var selectedID = UserDefaults.standard.string(forKey: "chatGPTProfile") ?? ""
+    var selectedID: String
+    private let preferences: UserDefaults
+    var reasoningChoice = "default"
+    var selectedModel: ChatGPTModel? { models.first { $0.id == modelID } }
+    var reasoningEffort: String? { selectedModel?.resolvedEffort(reasoningChoice) }
+    init(preferences: UserDefaults = .standard) {
+        self.preferences = preferences
+        selectedID = preferences.string(forKey: "chatGPTProfile") ?? ""
+    }
     var models: [ChatGPTModel] = []
     var modelID = ""
     var busy = false
@@ -110,13 +133,24 @@ final class ChatGPTAccount {
     func choose(_ id: String) {
         guard id != selectedID else { return }
         cancelLogin(); onChange?(); models = []; modelID = ""; selectedID = id
-        UserDefaults.standard.set(id, forKey: "chatGPTProfile")
+        preferences.set(id, forKey: "chatGPTProfile")
         if connected { operation = Task { await loadModels() } }
     }
     func chooseModel(_ id: String) {
         guard models.contains(where: { $0.id == id }), id != modelID else { return }
         onChange?(); modelID = id
-        UserDefaults.standard.set(id, forKey: "chatGPTModel." + selectedID)
+        restoreReasoning()
+        preferences.set(id, forKey: "chatGPTModel." + selectedID)
+    }
+    private var reasoningKey: String { "chatGPTReasoning." + selectedID + "." + modelID }
+    func restoreReasoning() {
+        let saved = preferences.string(forKey: reasoningKey) ?? "default"
+        reasoningChoice = selectedModel?.resolvedEffort(saved) == nil ? "default" : saved
+    }
+    func chooseReasoning(_ choice: String) {
+        guard choice == "default" || selectedModel?.resolvedEffort(choice) != nil else { return }
+        reasoningChoice = choice
+        preferences.set(choice, forKey: reasoningKey)
     }
     func signIn(addAccount: Bool = false) {
         guard !busy else { return }
@@ -132,8 +166,8 @@ final class ChatGPTAccount {
                 let port = try await callback.start()
                 try Task.checkCancellation()
                 let redirect = "http://127.0.0.1:\(port)/auth/callback"
-                var host = UserDefaults.standard.string(forKey: "chatGPTHost")
-                if host == nil { host = "urn:uuid:" + UUID().uuidString.lowercased(); UserDefaults.standard.set(host, forKey: "chatGPTHost") }
+                var host = preferences.string(forKey: "chatGPTHost")
+                if host == nil { host = "urn:uuid:" + UUID().uuidString.lowercased(); preferences.set(host, forKey: "chatGPTHost") }
                 var fields = ["response_type": "code", "client_id": existing?.clientID ?? "dynamic_agent_client", "ext_agent_host_id": host!, "redirect_uri": redirect, "scope": OAuthSecurity.scopes, "resource": OAuthSecurity.resource, "state": state, "nonce": nonce, "code_challenge": OAuthSecurity.challenge(verifier), "code_challenge_method": "S256"]
                 if let existing {
                     fields["id_token_hint"] = existing.identity; fields["login_hint"] = existing.email
@@ -155,10 +189,10 @@ final class ChatGPTAccount {
                 try applyTokens(object, to: &record)
                 var updated = registrations.filter { $0.clientID != record.clientID }; updated.append(record)
                 try save(updated)
-                selectedID = record.clientID; UserDefaults.standard.set(selectedID, forKey: "chatGPTProfile")
+                selectedID = record.clientID; preferences.set(selectedID, forKey: "chatGPTProfile")
                 message = nil
                 if !record.scopes.contains("chatgpt.tokens.use.direct") { throw VoiceError("Signed in, but ChatGPT plan usage was not granted. Continue with ChatGPT again and allow plan usage.") }
-                if !UserDefaults.standard.bool(forKey: "chatGPTWelcomeSeen") { showWelcome = true }
+                if !preferences.bool(forKey: "chatGPTWelcomeSeen") { showWelcome = true }
                 await loadModels()
                 NSApp.activate(ignoringOtherApps: true)
             } catch {
@@ -169,7 +203,7 @@ final class ChatGPTAccount {
     func cancelLogin() {
         generation = UUID(); receiver?.cancel(); receiver = nil; operation?.cancel(); operation = nil; busy = false; canCancel = false; message = nil
     }
-    func welcomeSeen() { showWelcome = false; UserDefaults.standard.set(true, forKey: "chatGPTWelcomeSeen") }
+    func welcomeSeen() { showWelcome = false; preferences.set(true, forKey: "chatGPTWelcomeSeen") }
     private func applyTokens(_ object: [String: Any], to record: inout ChatGPTRegistration) throws {
         guard let access = object["access_token"] as? String, !access.isEmpty,
               (object["token_type"] as? String)?.lowercased() == "bearer",
@@ -216,8 +250,9 @@ final class ChatGPTAccount {
             let catalog = try Self.parseModels(data)
             try Task.checkCancellation(); guard id == selectedID else { return }
             models = catalog
-            let saved = UserDefaults.standard.string(forKey: "chatGPTModel." + id)
+            let saved = preferences.string(forKey: "chatGPTModel." + id)
             modelID = catalog.first(where: { $0.id == saved })?.id ?? catalog.first?.id ?? ""
+            restoreReasoning()
             message = catalog.isEmpty ? "No text models are available for this ChatGPT account." : nil
         } catch { if id == selectedID && !Task.isCancelled { message = error.localizedDescription } }
     }
@@ -226,7 +261,12 @@ final class ChatGPTAccount {
         guard let models = object?["models"] as? [[String: Any]] else { throw VoiceError("ChatGPT returned an unrecognised model catalog.") }
         return models.compactMap { item in
             guard item["visibility"] as? String == "list", let slug = item["slug"] as? String, !slug.isEmpty, let name = item["display_name"] as? String else { return nil }
-            return .init(id: slug, name: name)
+            // Catalog capabilities are authoritative; app-server-only efforts
+            // (for example ultra) are not public Responses effort values.
+            let raw = item["supported_reasoning_levels"] as? [[String: Any]] ?? []
+            var seen = Set<String>()
+            let levels = raw.compactMap { $0["effort"] as? String }.filter { ChatGPTModel.apiReasoningLevels.contains($0) && seen.insert($0).inserted }
+            return .init(id: slug, name: name, reasoningLevels: levels)
         }
     }
     func signOut() {

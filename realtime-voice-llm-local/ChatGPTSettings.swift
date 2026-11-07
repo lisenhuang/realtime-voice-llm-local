@@ -29,6 +29,16 @@ struct ChatGPTSettings: View {
                     Picker("Text model", selection: Binding(get: { account.modelID }, set: { account.chooseModel($0) })) {
                         ForEach(account.models) { model in Text(model.name).tag(model.id) }
                     }.disabled(account.busy)
+                    Picker("Reasoning level", selection: Binding(get: { account.reasoningChoice }, set: { account.chooseReasoning($0) })) {
+                        Text("Model default").tag("default")
+                        ForEach(account.selectedModel?.reasoningLevels ?? [], id: \.self) { effort in
+                            Text(ChatGPTModel.effortLabel(effort)).tag(effort)
+                        }
+                    }.disabled(account.busy || (account.selectedModel?.reasoningLevels.isEmpty ?? true))
+                    Text((account.selectedModel?.reasoningLevels.isEmpty ?? true)
+                         ? "This model does not advertise adjustable reasoning levels. Using its default."
+                         : "Lower levels usually reply faster. Higher levels spend more time thinking. Saved for this model and account; applies from your next reply.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
                     Button("Refresh models") { Task { await account.loadModels() } }.disabled(account.busy)

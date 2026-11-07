@@ -57,7 +57,7 @@ struct LocalVoiceTests {
         let offline = LocalTools.specifications(web: false)
         let online = LocalTools.specifications(web: true)
         #expect(offline.count == 2)
-        #expect(online.count == 4)
+        #expect(online.count == 5)
     }
     @Test func toolBudgetPreventsUnboundedLoops() async {
         let budget = ToolBudget()

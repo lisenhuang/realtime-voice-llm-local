@@ -151,3 +151,62 @@ struct ChatGPTStreamTests {
         catch { #expect(error is CancellationError || (error as? URLError)?.code == .cancelled) }
     }
 }
+
+struct ReasoningAndWeatherTests {
+    @Test func catalogFiltersUnsupportedEffortsAndDefaultOmitsParameter() throws {
+        let data = Data(#"{"models":[{"slug":"test-model","display_name":"Test","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"},{"effort":"low"}]}]}"#.utf8)
+        let model = try #require(ChatGPTAccount.parseModels(data).first)
+        #expect(model.reasoningLevels == ["low", "high"])
+        #expect(model.resolvedEffort("none") == nil)
+        #expect(ChatGPTBrain.requestBody(model: model.id, input: [], web: false)["reasoning"] == nil)
+        let body = ChatGPTBrain.requestBody(model: model.id, input: [], web: true, reasoningEffort: model.resolvedEffort("low"))
+        #expect((body["reasoning"] as? [String: String])?["effort"] == "low")
+        #expect(ChatGPTBrain.requestBody(model: model.id, input: [], web: false, reasoningEffort: "ultra")["reasoning"] == nil)
+        #expect((body["instructions"] as? String)?.contains(model.id) == true)
+    }
+    @Test @MainActor func reasoningPersistsPerAccountAndModelWithoutClearingConversation() throws {
+        let suite = "LocalVoiceTests." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let account = ChatGPTAccount(preferences: defaults)
+        account.selectedID = "first"
+        account.models = [.init(id: "a", name: "A", reasoningLevels: ["low", "high"]), .init(id: "b", name: "B", reasoningLevels: ["medium"])]
+        account.chooseModel("a")
+        var cleared = false; account.onChange = { cleared = true }
+        account.chooseReasoning("low")
+        #expect(account.reasoningEffort == "low" && !cleared)
+        account.chooseModel("b"); #expect(account.reasoningEffort == nil)
+        account.chooseReasoning("low"); #expect(account.reasoningEffort == nil)
+        account.chooseModel("a"); #expect(account.reasoningEffort == "low")
+        account.selectedID = "second"; account.restoreReasoning(); #expect(account.reasoningEffort == nil)
+        account.selectedID = "first"; account.models[0].reasoningLevels = ["high"]
+        account.restoreReasoning(); #expect(account.reasoningChoice == "default")
+        account.models[0].reasoningLevels = ["low", "high"]; account.restoreReasoning()
+        account.chooseReasoning("default"); #expect(account.reasoningEffort == nil)
+        let restored = ChatGPTAccount(preferences: defaults)
+        restored.selectedID = "first"; restored.models = account.models; restored.chooseModel("a")
+        #expect(restored.reasoningChoice == "default")
+    }
+    @Test func weatherKeepsDatesUnitsAndMissingValues() throws {
+        let fixture: [String: Any] = ["timezone":"Pacific/Auckland", "current":["time":"2026-11-08T09:00", "temperature_2m":18.2, "weather_code":3], "current_units":["temperature_2m":"°C"], "daily":["time":["2026-11-08", "2026-11-09"], "temperature_2m_max":[20.0, 21.0], "precipitation_probability_max":[NSNull(), 60] as [Any], "weather_code":[3, 61]], "daily_units":["precipitation_probability_max":"%"]]
+        let result = try WeatherTool.format(fixture, location: "Auckland, New Zealand")
+        let parsed = try #require(JSONSerialization.jsonObject(with: Data(result.utf8)) as? [String: Any])
+        #expect(parsed["timezone"] as? String == "Pacific/Auckland")
+        #expect((parsed["current"] as? [String: Any])?["conditions"] as? String == "Overcast")
+        let days = try #require(parsed["daily"] as? [[String: Any]])
+        #expect(days[0]["precipitation_probability_max"] is NSNull)
+        #expect(days[1]["date"] as? String == "2026-11-09")
+        #expect(days[1]["conditions"] as? String == "Slight rain")
+        #expect(throws: (any Error).self) { try WeatherTool.format([:], location: "Auckland") }
+    }
+    @Test func weatherUsesExplicitCountryAndHonoursWebPermission() async throws {
+        let url = try WeatherTool.geocodingURL(location: "Auckland", countryCode: "nz")
+        #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "countryCode" })?.value == "NZ")
+        #expect(throws: (any Error).self) { try WeatherTool.forecastURL(latitude: .nan, longitude: 174.7) }
+        let item: [String: Any] = ["type":"function_call", "call_id":"weather", "namespace":"local", "name":"get_weather", "arguments":#"{"location":"Auckland","country_code":"NZ"}"#]
+        let call = try ChatGPTBrain.toolCall(item, web: true)
+        #expect(try await LocalTools.execute(call, webEnabled: false) == "Web access is disabled.")
+        #expect(throws: (any Error).self) { try ChatGPTBrain.toolCall(item, web: false) }
+        let tools = LocalTools.specifications(web: true)
+        #expect(tools.count == 5)
+    }
+}
