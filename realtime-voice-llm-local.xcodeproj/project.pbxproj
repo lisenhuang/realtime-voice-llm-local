@@ -1,0 +1,626 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AADD00000000000000000011 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = AACC00000000000000000011 /* FluidAudio */; };
+		AADD00000000000000000012 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = AACC00000000000000000012 /* MLXLLM */; };
+		AADD00000000000000000013 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = AACC00000000000000000013 /* MLXLMCommon */; };
+		AADD00000000000000000014 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = AACC00000000000000000014 /* Tokenizers */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		46D1D149BC2F990FAA030F0C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 043E24DA4CA9A6DB74CAF203 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0FA450DB309F05B300518F04;
+			remoteInfo = "realtime-voice-llm-local";
+		};
+		BACEA6A1F6A2E6A25FC5C835 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 043E24DA4CA9A6DB74CAF203 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0FA450DB309F05B300518F04;
+			remoteInfo = "realtime-voice-llm-local";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0FA450DC309F05B300518F04 /* realtime-voice-llm-local.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "realtime-voice-llm-local.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FA450E9309F05B400518F04 /* realtime-voice-llm-localTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "realtime-voice-llm-localTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FA450F3309F05B400518F04 /* realtime-voice-llm-localUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "realtime-voice-llm-localUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1582AB725729AFB47E6A1626 /* realtime-voice-llm-localUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "realtime-voice-llm-localUITests";
+			sourceTree = "<group>";
+		};
+		BE0178147CAF8C420D381128 /* realtime-voice-llm-localTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "realtime-voice-llm-localTests";
+			sourceTree = "<group>";
+		};
+		D40B7DB3FDC1A07491FFA081 /* realtime-voice-llm-local */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "realtime-voice-llm-local";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2B2C64179C21C0B4A34A8288 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				AADD00000000000000000011 /* FluidAudio in Frameworks */,
+				AADD00000000000000000012 /* MLXLLM in Frameworks */,
+				AADD00000000000000000013 /* MLXLMCommon in Frameworks */,
+				AADD00000000000000000014 /* Tokenizers in Frameworks */,
+			);
+		};
+		BFC86827DB0B90BD60B46756 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		F9A4477C2B21F6F1B0710DA1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4850CE920EFFEEB38884EED4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0FA450DC309F05B300518F04 /* realtime-voice-llm-local.app */,
+				0FA450E9309F05B400518F04 /* realtime-voice-llm-localTests.xctest */,
+				0FA450F3309F05B400518F04 /* realtime-voice-llm-localUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A68A9CF74B9013B3531A705E = {
+			isa = PBXGroup;
+			children = (
+				D40B7DB3FDC1A07491FFA081 /* realtime-voice-llm-local */,
+				BE0178147CAF8C420D381128 /* realtime-voice-llm-localTests */,
+				1582AB725729AFB47E6A1626 /* realtime-voice-llm-localUITests */,
+				4850CE920EFFEEB38884EED4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0FA450DB309F05B300518F04 /* realtime-voice-llm-local */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 78800BB2029B6C4F7A2DBD5C /* Build configuration list for PBXNativeTarget "realtime-voice-llm-local" */;
+			buildPhases = (
+				B69E61810D703DC01F9FADA7 /* Sources */,
+				2B2C64179C21C0B4A34A8288 /* Frameworks */,
+				7C820CE2982BFF9DC051DCDA /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				D40B7DB3FDC1A07491FFA081 /* realtime-voice-llm-local */,
+			);
+			name = "realtime-voice-llm-local";
+			packageProductDependencies = (
+				AACC00000000000000000011 /* FluidAudio */,
+				AACC00000000000000000012 /* MLXLLM */,
+				AACC00000000000000000013 /* MLXLMCommon */,
+				AACC00000000000000000014 /* Tokenizers */,
+			);
+			productName = "realtime-voice-llm-local";
+			productReference = 0FA450DC309F05B300518F04 /* realtime-voice-llm-local.app */;
+			productType = "com.apple.product-type.application";
+		};
+		0FA450E8309F05B400518F04 /* realtime-voice-llm-localTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F59885E2C56CE3C1C638F84F /* Build configuration list for PBXNativeTarget "realtime-voice-llm-localTests" */;
+			buildPhases = (
+				E837DD88AAF4409835155099 /* Sources */,
+				F9A4477C2B21F6F1B0710DA1 /* Frameworks */,
+				DB038CA8D3586B7A0BBF82FA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				ACCC86291493FF138458E4CB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				BE0178147CAF8C420D381128 /* realtime-voice-llm-localTests */,
+			);
+			name = "realtime-voice-llm-localTests";
+			productName = "realtime-voice-llm-localTests";
+			productReference = 0FA450E9309F05B400518F04 /* realtime-voice-llm-localTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		0FA450F2309F05B400518F04 /* realtime-voice-llm-localUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 24105D82F2E2BB9F4951BBA9 /* Build configuration list for PBXNativeTarget "realtime-voice-llm-localUITests" */;
+			buildPhases = (
+				7A661B6999346811335CA413 /* Sources */,
+				BFC86827DB0B90BD60B46756 /* Frameworks */,
+				436EAB6518DE1051112812CF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EC9D2468EB773B4E6A6CEC29 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1582AB725729AFB47E6A1626 /* realtime-voice-llm-localUITests */,
+			);
+			name = "realtime-voice-llm-localUITests";
+			productName = "realtime-voice-llm-localUITests";
+			productReference = 0FA450F3309F05B400518F04 /* realtime-voice-llm-localUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		043E24DA4CA9A6DB74CAF203 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2720;
+				LastUpgradeCheck = 2720;
+				TargetAttributes = {
+					0FA450E8309F05B400518F04 = {
+						TestTargetID = 0FA450DB309F05B300518F04;
+					};
+					0FA450F2309F05B400518F04 = {
+						TestTargetID = 0FA450DB309F05B300518F04;
+					};
+				};
+			};
+			buildConfigurationList = 80B6218E0D7EAF6F8EF34FEC /* Build configuration list for PBXProject "realtime-voice-llm-local" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A68A9CF74B9013B3531A705E;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AABB00000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */,
+				AABB00000000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
+				AABB00000000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */,
+			);
+			preferredProjectObjectVersion = 110;
+			productRefGroup = 4850CE920EFFEEB38884EED4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0FA450DB309F05B300518F04 /* realtime-voice-llm-local */,
+				0FA450E8309F05B400518F04 /* realtime-voice-llm-localTests */,
+				0FA450F2309F05B400518F04 /* realtime-voice-llm-localUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		436EAB6518DE1051112812CF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		7C820CE2982BFF9DC051DCDA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		DB038CA8D3586B7A0BBF82FA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7A661B6999346811335CA413 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		B69E61810D703DC01F9FADA7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		E837DD88AAF4409835155099 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		ACCC86291493FF138458E4CB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0FA450DB309F05B300518F04 /* realtime-voice-llm-local */;
+			targetProxy = 46D1D149BC2F990FAA030F0C /* PBXContainerItemProxy */;
+		};
+		EC9D2468EB773B4E6A6CEC29 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0FA450DB309F05B300518F04 /* realtime-voice-llm-local */;
+			targetProxy = BACEA6A1F6A2E6A25FC5C835 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		6735D8A13EC951EFB18E333A /* Release configuration for PBXNativeTarget "realtime-voice-llm-local" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Local Voice";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Local Voice uses your microphone for private, on-device conversations.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-local";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = targeted;
+ ENABLE_TESTABILITY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		689ED8AFE83F8FE6D061C6A2 /* Release configuration for PBXNativeTarget "realtime-voice-llm-localUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-localUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "realtime-voice-llm-local";
+			};
+			name = Release;
+		};
+		766E537A76217115CA04EC1F /* Debug configuration for PBXNativeTarget "realtime-voice-llm-localUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-localUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "realtime-voice-llm-local";
+			};
+			name = Debug;
+		};
+		7D7C14F9E35CDBC7A9C38411 /* Debug configuration for PBXNativeTarget "realtime-voice-llm-local" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Local Voice";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Local Voice uses your microphone for private, on-device conversations.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-local";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = targeted;
+ ENABLE_TESTABILITY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8B25EE99F449FD8260D32F9A /* Release configuration for PBXProject "realtime-voice-llm-local" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = SG5968327N;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		BD831F7263E1689EA817EF1C /* Release configuration for PBXNativeTarget "realtime-voice-llm-localTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-localTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/realtime-voice-llm-local.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/realtime-voice-llm-local";
+			};
+			name = Release;
+		};
+		C80BB3139F796C93FF47B65B /* Debug configuration for PBXProject "realtime-voice-llm-local" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = SG5968327N;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		FA1BBB330E4D5A9FDCA33408 /* Debug configuration for PBXNativeTarget "realtime-voice-llm-localTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SG5968327N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.xiuke.realtime-voice-llm-localTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/realtime-voice-llm-local.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/realtime-voice-llm-local";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		24105D82F2E2BB9F4951BBA9 /* Build configuration list for PBXNativeTarget "realtime-voice-llm-localUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				766E537A76217115CA04EC1F /* Debug configuration for PBXNativeTarget "realtime-voice-llm-localUITests" */,
+				689ED8AFE83F8FE6D061C6A2 /* Release configuration for PBXNativeTarget "realtime-voice-llm-localUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		78800BB2029B6C4F7A2DBD5C /* Build configuration list for PBXNativeTarget "realtime-voice-llm-local" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D7C14F9E35CDBC7A9C38411 /* Debug configuration for PBXNativeTarget "realtime-voice-llm-local" */,
+				6735D8A13EC951EFB18E333A /* Release configuration for PBXNativeTarget "realtime-voice-llm-local" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		80B6218E0D7EAF6F8EF34FEC /* Build configuration list for PBXProject "realtime-voice-llm-local" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C80BB3139F796C93FF47B65B /* Debug configuration for PBXProject "realtime-voice-llm-local" */,
+				8B25EE99F449FD8260D32F9A /* Release configuration for PBXProject "realtime-voice-llm-local" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		F59885E2C56CE3C1C638F84F /* Build configuration list for PBXNativeTarget "realtime-voice-llm-localTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA1BBB330E4D5A9FDCA33408 /* Debug configuration for PBXNativeTarget "realtime-voice-llm-localTests" */,
+				BD831F7263E1689EA817EF1C /* Release configuration for PBXNativeTarget "realtime-voice-llm-localTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AABB00000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
+			requirement = {
+				kind = revision;
+				revision = ee78635d23d52379117554ba72358b65a0612447;
+			};
+		};
+		AABB00000000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
+			requirement = {
+				kind = exactVersion;
+				version = 3.31.4;
+			};
+		};
+		AABB00000000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AACC00000000000000000011 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
+		};
+		AACC00000000000000000012 /* MLXLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLLM;
+		};
+		AACC00000000000000000013 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLMCommon;
+		};
+		AACC00000000000000000014 /* Tokenizers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Tokenizers;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 043E24DA4CA9A6DB74CAF203 /* Project object */;
+	validationLevel = 1;
+}
