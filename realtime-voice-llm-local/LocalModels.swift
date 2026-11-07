@@ -15,6 +15,7 @@ struct TranscriptLine: Identifiable, Codable, Sendable {
     var id = UUID()
     let role: String
     var text: String
+    var citations: [TranscriptCitation] = []
     var spoken = ""
     var interrupted = false
     var date = Date()
@@ -107,7 +108,7 @@ actor LocalBrain {
             remaining -= clipped.count
             previous.insert(line.role == "user" ? .user(clipped) : .assistant(clipped), at: 0)
         }
-        let instructions = VoiceInstructions.text + " Your text model is Qwen3.5 4B, running locally on this Mac."
+        let instructions = VoiceInstructions.context + " Your text model is Qwen3.5 4B, running locally on this Mac."
         let key = historyKey(history)
         let reuse = cachedSession != nil && cachedHistory == key && cachedWeb == webEnabled && cachedTurns < 4
         var reusableSession = reuse ? cachedSession : nil

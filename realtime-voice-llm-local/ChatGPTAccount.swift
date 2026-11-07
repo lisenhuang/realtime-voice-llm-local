@@ -91,11 +91,24 @@ final class ChatGPTAccount {
     var selectedID: String
     private let preferences: UserDefaults
     var reasoningChoice = "default"
+    var webSearchChoice: WebSearchProvider = .appTools
+    var webChecks: [String: WebSearchCheck] = [:]
+    var testingWeb = false
+    var webTestProgress = ""
+    var onWebTest: (() -> Void)?
+    private var webTestTask: Task<Void, Never>?
+    private var webTestID = UUID()
+    private func webKey(model: String, effort: String?) -> String { selectedID + "|" + model + "|" + (effort ?? "default") }
+    private var currentWebKey: String { webKey(model: modelID, effort: reasoningEffort) }
+    var currentWebCheck: WebSearchCheck? { webChecks[currentWebKey] }
+    var effectiveSearchProvider: WebSearchProvider { webSearchChoice == .model && currentWebCheck?.isRecentSuccess == true ? .model : .appTools }
+    var accountWebChecks: [WebSearchCheck] { webChecks.filter { $0.key.hasPrefix(selectedID + "|") }.map(\.value).sorted { $0.date > $1.date } }
     var selectedModel: ChatGPTModel? { models.first { $0.id == modelID } }
     var reasoningEffort: String? { selectedModel?.resolvedEffort(reasoningChoice) }
     init(preferences: UserDefaults = .standard) {
         self.preferences = preferences
         selectedID = preferences.string(forKey: "chatGPTProfile") ?? ""
+        if let data = preferences.data(forKey: "chatGPTWebChecks"), let checks = try? JSONDecoder().decode([String: WebSearchCheck].self, from: data) { webChecks = checks }
     }
     var models: [ChatGPTModel] = []
     var modelID = ""
@@ -138,7 +151,7 @@ final class ChatGPTAccount {
     }
     func chooseModel(_ id: String) {
         guard models.contains(where: { $0.id == id }), id != modelID else { return }
-        onChange?(); modelID = id
+        cancelWebTest(); onChange?(); modelID = id
         restoreReasoning()
         preferences.set(id, forKey: "chatGPTModel." + selectedID)
     }
@@ -146,15 +159,66 @@ final class ChatGPTAccount {
     func restoreReasoning() {
         let saved = preferences.string(forKey: reasoningKey) ?? "default"
         reasoningChoice = selectedModel?.resolvedEffort(saved) == nil ? "default" : saved
+        restoreWebSearch()
     }
     func chooseReasoning(_ choice: String) {
         guard choice == "default" || selectedModel?.resolvedEffort(choice) != nil else { return }
-        reasoningChoice = choice
+        cancelWebTest(); reasoningChoice = choice
         preferences.set(choice, forKey: reasoningKey)
+        restoreWebSearch()
+    }
+    private func restoreWebSearch() {
+        webSearchChoice = WebSearchProvider(rawValue: preferences.string(forKey: "chatGPTWebProvider." + currentWebKey) ?? "") ?? .appTools
+    }
+    func chooseWebSearch(_ provider: WebSearchProvider) {
+        guard provider == .appTools || currentWebCheck?.isRecentSuccess == true else { return }
+        webSearchChoice = provider
+        preferences.set(provider.rawValue, forKey: "chatGPTWebProvider." + currentWebKey)
+    }
+    func cancelWebTest() {
+        webTestID = UUID(); webTestTask?.cancel(); webTestTask = nil; testingWeb = false
+    }
+    func testWebSearch(allModels: Bool = false) {
+        guard connected, !busy, !testingWeb, let selectedModel else { return }
+        onWebTest?()
+        let targets = allModels ? models : [selectedModel]
+        let profile = selectedID; let requestedEffort = reasoningEffort
+        let checkID = UUID(); webTestID = checkID; testingWeb = true
+        webTestTask = Task {
+            defer { if webTestID == checkID { testingWeb = false; webTestTask = nil } }
+            for (index, target) in targets.enumerated() {
+                guard !Task.isCancelled, webTestID == checkID else { return }
+                let effort = requestedEffort.flatMap { target.resolvedEffort($0) }
+                webTestProgress = "Testing \(target.name) (\(index + 1)/\(targets.count))…"
+                let started = Date()
+                var passed = false; var detail = ""
+                do {
+                    let token = try await accessToken(for: profile)
+                    try Task.checkCancellation()
+                    let evidence = WebProbeEvents()
+                    let output = try await ChatGPTBrain().stream(body: HostedSearch.request(model: target.id, effort: effort), token: token, onToken: { _ in }, onEvent: { await evidence.observe($0) })
+                    let events = await evidence.result()
+                    let searches = max(HostedSearch.completedSearchCount(output), events.completed)
+                    let sources = HostedSearch.citations(output)
+                    passed = searches > 0
+                    let items = output.map { item in (item["type"] as? String ?? "unknown") + " (" + (item["status"] as? String ?? "no status") + ")" }.joined(separator: ", ")
+                    let answer = output.filter { $0["type"] as? String == "message" }.flatMap { $0["content"] as? [[String: Any]] ?? [] }.compactMap { $0["text"] as? String }.joined(separator: " ")
+                    detail = passed ? "\(searches) completed web search call(s), \(sources.count) source citation(s)." : "No completed web search call was returned. Returned items: \(items). Citations: \(sources.count). Test reply: \(String(answer.prefix(500))). Events: \(events.names)"
+                } catch {
+                    if Task.isCancelled || webTestID != checkID { return }
+                    detail = "Could not verify web search. " + error.localizedDescription
+                }
+                guard !Task.isCancelled, webTestID == checkID, selectedID == profile else { return }
+                let result = WebSearchCheck(model: target.id, effort: effort ?? "default", passed: passed, seconds: Date().timeIntervalSince(started), date: Date(), detail: detail)
+                webChecks[webKey(model: target.id, effort: effort)] = result
+                if let data = try? JSONEncoder().encode(webChecks) { preferences.set(data, forKey: "chatGPTWebChecks") }
+            }
+            webTestProgress = "Web search check finished. Times include model thinking, search and the short answer."
+        }
     }
     func signIn(addAccount: Bool = false) {
         guard !busy else { return }
-        onChange?(); busy = true; canCancel = true; message = "Finish sign-in in your browser."
+        cancelWebTest(); onChange?(); busy = true; canCancel = true; message = "Finish sign-in in your browser."
         generation = UUID(); let attempt = generation
         let existing = addAccount ? nil : registrations.first(where: { $0.clientID == selectedID })
         operation = Task {
@@ -201,6 +265,7 @@ final class ChatGPTAccount {
         }
     }
     func cancelLogin() {
+        cancelWebTest()
         generation = UUID(); receiver?.cancel(); receiver = nil; operation?.cancel(); operation = nil; busy = false; canCancel = false; message = nil
     }
     func welcomeSeen() { showWelcome = false; preferences.set(true, forKey: "chatGPTWelcomeSeen") }

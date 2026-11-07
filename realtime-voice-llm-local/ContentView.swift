@@ -180,7 +180,10 @@ struct ContentView: View {
                                     if line.interrupted { Text("Interrupted").font(.system(size: 10)).foregroundStyle(.secondary) }
                                 }
                                 if line.text.isEmpty { Text("…").foregroundStyle(.secondary) }
-                                else { Text(line.text).font(.system(size: 15)).lineSpacing(5).textSelection(.enabled).foregroundStyle(.white.opacity(line.interrupted ? 0.5 : 0.88)) }
+                                else { Text(line.attributedText).font(.system(size: 15)).lineSpacing(5).textSelection(.enabled).foregroundStyle(.white.opacity(line.interrupted ? 0.5 : 0.88)) }
+                                ForEach(line.citations) { citation in
+                                    if let url = citation.link { Link(citation.title, destination: url).font(.caption).lineLimit(2) }
+                                }
                             }.frame(maxWidth: .infinity, alignment: .leading).id(line.id)
                         }
                         if !model.partial.isEmpty {

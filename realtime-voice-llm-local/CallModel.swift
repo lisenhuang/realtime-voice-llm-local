@@ -60,6 +60,7 @@ final class CallModel {
     private var wasSpeakingAtStart = false
 
     init() {
+        chatGPT.onWebTest = { [weak self] in self?.endCall() }
         chatGPT.onChange = { [weak self] in self?.endCall(); self?.newConversation() }
         audio.onPhrasePlayed = { [weak self] text in
             guard let self, let id = self.assistantID, let i = self.transcript.firstIndex(where: { $0.id == id }) else { return }
@@ -252,6 +253,7 @@ final class CallModel {
               catch { if self.turnID == turn { self.error = "Voice playback failed: \(error.localizedDescription)"; self.synthesisFinished = true; self.finishIfIdle() } }
         }
         let chosenReasoning = chatGPT.reasoningEffort
+        let chosenSearch = chatGPT.effectiveSearchProvider
         responseTask = Task { [weak self] in
             guard let self else { return }
             let accumulator = ResponsePhrases()
@@ -263,7 +265,8 @@ final class CallModel {
                 let onTool: @Sendable (String) async -> Void = { [weak self] label in await self?.toolStarted(label, turn: turn) }
                 if self.provider == .chatGPT {
                     try await self.cloudBrain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
-                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, reasoningEffort: chosenReasoning, onToken: onToken, onTool: onTool)
+                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, reasoningEffort: chosenReasoning, searchProvider: chosenSearch,
+                        onCitations: { [weak self] citations in await self?.receiveCitations(citations, turn: turn) }, onToken: onToken, onTool: onTool)
                 } else {
                     try await self.brain.respond(prompt: text, history: previous, webEnabled: self.webEnabled, onToken: onToken, onTool: onTool)
                 }
@@ -280,6 +283,10 @@ final class CallModel {
                 self.responseFinished = true; self.thinking = false; self.finishIfIdle()
             }
         }
+    }
+    private func receiveCitations(_ citations: [TranscriptCitation], turn: UUID) {
+        guard turnID == turn, let id = assistantID, let i = transcript.firstIndex(where: { $0.id == id }) else { return }
+        transcript[i].citations.append(contentsOf: citations)
     }
     private func receiveToken(_ token: String, phrases: [String], turn: UUID) {
         guard turnID == turn, active, let id = assistantID, let i = transcript.firstIndex(where: { $0.id == id }) else { return }
@@ -298,7 +305,7 @@ final class CallModel {
         phraseContinuation?.finish(); phraseContinuation = nil
         let fragment = audio.interrupt()
         if mark, let id = assistantID, let i = transcript.firstIndex(where: { $0.id == id }),
-           !responseFinished || !synthesisFinished || transcript[i].spoken.trimmingCharacters(in: .whitespacesAndNewlines) != transcript[i].text.trimmingCharacters(in: .whitespacesAndNewlines) {
+           !responseFinished || !synthesisFinished || SpokenTextFilter.comparisonText(transcript[i].spoken) != SpokenTextFilter.comparisonText(transcript[i].text) {
             if !fragment.isEmpty { transcript[i].spoken += (transcript[i].spoken.isEmpty ? "" : " ") + fragment }
             transcript[i].interrupted = true
         }
@@ -320,6 +327,7 @@ final class CallModel {
 }
 actor ResponsePhrases {
     private var buffer = PhraseBuffer()
-    func append(_ token: String) -> [String] { buffer.append(token) }
+    private var filter = SpokenTextFilter()
+    func append(_ token: String) -> [String] { buffer.append(filter.append(token)) }
     func finish() -> String { buffer.finish() }
 }

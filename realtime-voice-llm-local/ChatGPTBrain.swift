@@ -24,16 +24,21 @@ struct ResponseEvents {
     }
 }
 actor ChatGPTBrain {
-    static func requestBody(model: String, input: [[String: Any]], web: Bool, reasoningEffort: String? = nil) -> [String: Any] {
-        let functions: [[String: Any]] = LocalTools.specifications(web: web).compactMap { spec in
+    static func requestBody(model: String, input: [[String: Any]], web: Bool, reasoningEffort: String? = nil, searchProvider: WebSearchProvider = .appTools) -> [String: Any] {
+        let functions: [[String: Any]] = LocalTools.specifications(web: web && searchProvider == .appTools).compactMap { spec in
             guard let function = spec["function"] as? [String: any Sendable] else { return nil }
             var definition = function as [String: Any]; definition["type"] = "function"; definition["strict"] = true
             return definition
         }
-        var body: [String: Any] = ["model": model, "instructions": VoiceInstructions.text + " Your selected text model is \(model), provided by OpenAI. You may state this model identifier when asked.", "input": input, "store": false, "stream": true,
+        var body: [String: Any] = ["model": model, "instructions": VoiceInstructions.context + " Your selected text model is \(model), provided by OpenAI. You may state this model identifier when asked.", "input": input, "store": false, "stream": true,
                 "include": ["reasoning.encrypted_content"],
                 "tools": [["type": "namespace", "name": "local", "description": "Read-only tools run on the user's Mac.", "tools": functions]]]
         if let reasoningEffort, ChatGPTModel.apiReasoningLevels.contains(reasoningEffort) { body["reasoning"] = ["effort": reasoningEffort] }
+        if web && searchProvider == .model {
+            var tools = body["tools"] as! [[String: Any]]; tools.append(["type":"web_search"]); body["tools"] = tools
+            body["include"] = ["reasoning.encrypted_content", "web_search_call.action.sources"]
+            body["instructions"] = (body["instructions"] as! String) + " For this reply, use the built-in web_search tool for web facts and weather. App weather/search/page tools are unavailable. Cite web sources in the text, but do not read citation markers or URLs aloud."
+        }
         return body
     }
     static func input(prompt: String, history: [TranscriptLine]) -> [[String: Any]] {
@@ -56,33 +61,37 @@ actor ChatGPTBrain {
               let arguments = try JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any] else { throw VoiceError("ChatGPT requested an unavailable or invalid tool.") }
         return try JSONDecoder().decode(ToolCall.self, from: JSONSerialization.data(withJSONObject: ["id": id, "function": ["name": name, "arguments": arguments]]))
     }
-    func respond(prompt: String, history: [TranscriptLine], webEnabled: Bool, account: ChatGPTAccount, profile: String, model: String, reasoningEffort: String? = nil,
+    func respond(prompt: String, history: [TranscriptLine], webEnabled: Bool, account: ChatGPTAccount, profile: String, model: String, reasoningEffort: String? = nil, searchProvider: WebSearchProvider = .appTools,
+                 onCitations: @escaping @Sendable ([TranscriptCitation]) async -> Void = { _ in },
                  onToken: @escaping @Sendable (String) async -> Void, onTool: @escaping @Sendable (String) async -> Void) async throws {
         var input = Self.input(prompt: prompt, history: history)
         var usedTools = 0
+        var textOffset = 0
         for _ in 0..<5 {
             try Task.checkCancellation()
             let token = try await account.accessToken(for: profile)
             try Task.checkCancellation()
-            let body = Self.requestBody(model: model, input: input, web: webEnabled, reasoningEffort: reasoningEffort)
-            let output = try await stream(body: body, token: token, onToken: onToken)
+            let body = Self.requestBody(model: model, input: input, web: webEnabled, reasoningEffort: reasoningEffort, searchProvider: searchProvider)
+            let output = try await stream(body: body, token: token, onToken: onToken, onWebSearch: { await onTool("Searching with ChatGPT") })
+            await onCitations(HostedSearch.citations(output, offset: textOffset))
+            textOffset += HostedSearch.textLength(output)
             let calls = output.filter { $0["type"] as? String == "function_call" }
             if calls.isEmpty { return }
             input.append(contentsOf: output)
             for item in calls {
                 try Task.checkCancellation(); usedTools += 1
                 guard usedTools <= 4 else { throw VoiceError("The tool limit for this reply was reached. Please try a more specific request.") }
-                let call = try Self.toolCall(item, web: webEnabled)
+                let call = try Self.toolCall(item, web: webEnabled && searchProvider == .appTools)
                 await onTool(LocalTools.label(for: call))
                 let result = try await LocalTools.execute(call, webEnabled: webEnabled)
                 try Task.checkCancellation()
                 input.append(["type": "function_call_output", "call_id": item["call_id"]!, "output": result])
             }
-            await onToken(" ")
+            await onToken(" "); textOffset += 1
         }
         throw VoiceError("The tool limit for this reply was reached.")
     }
-    func stream(body: [String: Any], token: String, session suppliedSession: URLSession? = nil, onToken: @escaping @Sendable (String) async -> Void) async throws -> [[String: Any]] {
+    func stream(body: [String: Any], token: String, session suppliedSession: URLSession? = nil, onToken: @escaping @Sendable (String) async -> Void, onWebSearch: @escaping @Sendable () async -> Void = {}, onEvent: @escaping @Sendable (String) async -> Void = { _ in }) async throws -> [[String: Any]] {
         let session = suppliedSession ?? ChatGPTHTTP.session(); defer { session.invalidateAndCancel() }
         var request = URLRequest(url: URL(string: OAuthSecurity.resource + "/responses")!)
         request.httpMethod = "POST"; request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -98,9 +107,11 @@ actor ChatGPTBrain {
                 throw ChatGPTAPIError.from(data, status: status)
             }
             var events = ResponseEvents(); var characters = 0
+            var finishedItems: [Int: [String: Any]] = [:]
             for try await byte in bytes {
                 try Task.checkCancellation()
                 guard let event = try events.feed(byte) else { continue }
+                if let type = event["type"] as? String { await onEvent(type) }
                 switch event["type"] as? String {
                 case "response.output_text.delta", "response.refusal.delta":
                     if let delta = event["delta"] as? String {
@@ -108,9 +119,12 @@ actor ChatGPTBrain {
                         guard characters <= 50000 else { throw VoiceError("The reply was too long for a voice conversation. Please ask a shorter question.") }
                         await onToken(delta)
                     }
+                case "response.output_item.done":
+                    if let item = event["item"] as? [String: Any], let index = event["output_index"] as? Int { finishedItems[index] = item }
+                case "response.web_search_call.in_progress": await onWebSearch()
                 case "response.completed":
                     guard let result = event["response"] as? [String: Any], let output = result["output"] as? [[String: Any]] else { throw VoiceError("ChatGPT completed without a valid reply.") }
-                    return output
+                    return output.isEmpty ? finishedItems.keys.sorted().compactMap { finishedItems[$0] } : output
                 case "response.failed", "error":
                     let result = event["response"] as? [String: Any] ?? event
                     throw ChatGPTAPIError.from(try JSONSerialization.data(withJSONObject: result), status: 400)

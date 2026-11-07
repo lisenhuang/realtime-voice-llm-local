@@ -111,6 +111,13 @@ private final class MockResponses: URLProtocol, @unchecked Sendable {
         let prefix = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello.\"}\n\n"
         client?.urlProtocol(self, didLoad: Data(prefix.utf8))
         if mode.contains("hang") { return }
+        if mode.contains("items") {
+            let event = #"{"type":"response.output_item.done","output_index":0,"item":{"type":"web_search_call","status":"completed","id":"ws_test"}}"#
+            client?.urlProtocol(self, didLoad: Data(("data: " + event + "\n\n").utf8))
+            let completed = #"{"type":"response.completed","response":{"output":[]}}"#
+            client?.urlProtocol(self, didLoad: Data(("data: " + completed + "\n\n").utf8))
+            client?.urlProtocolDidFinishLoading(self); return
+        }
         let terminal: String
         if mode.contains("failed") { terminal = #"{"type":"response.failed","response":{"error":{"code":"subscription_sharing_usage_limit_exceeded"}}}"# }
         else if mode.contains("incomplete") { terminal = #"{"type":"response.incomplete"}"# }
@@ -126,6 +133,10 @@ private final class MockResponses: URLProtocol, @unchecked Sendable {
     }
 }
 struct ChatGPTStreamTests {
+    @Test func completedStreamRetainsPreviouslyFinishedOutputItems() async throws {
+        let output = try await ChatGPTBrain().stream(body: [:], token: "test-items", session: MockResponses.session(), onToken: { _ in })
+        #expect(HostedSearch.completedSearchCount(output) == 1)
+    }
     @Test func completedStreamReturnsOutput() async throws {
         let output = try await ChatGPTBrain().stream(body: [:], token: "test-complete", session: MockResponses.session(), onToken: { _ in })
         #expect(output.first?["type"] as? String == "message")
@@ -208,5 +219,55 @@ struct ReasoningAndWeatherTests {
         #expect(throws: (any Error).self) { try ChatGPTBrain.toolCall(item, web: false) }
         let tools = LocalTools.specifications(web: true)
         #expect(tools.count == 5)
+    }
+}
+
+struct HostedWebSearchTests {
+    @Test func searchProviderNeverBypassesWebPermission() throws {
+        let native = ChatGPTBrain.requestBody(model: "test", input: [], web: true, reasoningEffort: "low", searchProvider: .model)
+        let tools = try #require(native["tools"] as? [[String: Any]])
+        #expect(tools.contains { $0["type"] as? String == "web_search" })
+        let local = try #require(tools.first?["tools"] as? [[String: Any]])
+        #expect(local.compactMap { $0["name"] as? String } == ["get_current_time", "calculate"])
+        let off = ChatGPTBrain.requestBody(model: "test", input: [], web: false, searchProvider: .model)
+        #expect((off["tools"] as? [[String: Any]])?.count == 1)
+        let probe = HostedSearch.request(model: "test", effort: "low")
+        #expect(probe["tool_choice"] as? String == "required")
+        #expect((probe["reasoning"] as? [String: String])?["effort"] == "low")
+    }
+    @Test func supportRequiresCompletedSearchInsteadOfModelClaims() {
+        let claims: [[String: Any]] = [["type":"message", "content":[["text":"Yes, I can browse."]]], ["type":"web_search_call", "status":"failed"]]
+        #expect(HostedSearch.completedSearchCount(claims) == 0)
+        #expect(HostedSearch.completedSearchCount(claims + [["type":"web_search_call", "status":"completed"]]) == 1)
+    }
+    @Test func citationsBecomeClickableAndStayOutOfSpeech() throws {
+        let text = "Sunny. citereference"
+        let output: [[String: Any]] = [["type":"message", "content":[["text":text, "annotations":[["type":"url_citation", "url":"https://example.com/weather", "title":"Weather source", "start_index":7, "end_index":text.unicodeScalars.count]]]]]]
+        let sources = HostedSearch.citations(output)
+        #expect(sources.count == 1)
+        var line = TranscriptLine(role: "assistant", text: text); line.citations = sources
+        #expect(String(line.attributedText.characters) == "Sunny.  [1]")
+        #expect(line.attributedText.runs.contains { $0.link?.absoluteString == "https://example.com/weather" })
+        var spoken = SpokenTextFilter()
+        #expect(spoken.append("Sunny. ci") == "Sunny. ")
+        #expect(spoken.append("tereference Enjoy today.") == " Enjoy today.")
+        #expect(SpokenTextFilter.comparisonText(text) == SpokenTextFilter.comparisonText("  Sunny.  "))
+        let unsafe = TranscriptCitation(start: 0, end: 1, url: "javascript:alert(1)", title: "Bad")
+        #expect(unsafe.link == nil)
+    }
+    @Test @MainActor func providerSelectionRequiresFreshCheckForExactAccountModelAndEffort() throws {
+        let suite = "HostedWebTests." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let account = ChatGPTAccount(preferences: defaults); account.selectedID = "first"
+        account.models = [.init(id: "test", name: "Test", reasoningLevels: ["low", "high"])]; account.chooseModel("test"); account.chooseReasoning("low")
+        account.chooseWebSearch(.model); #expect(account.effectiveSearchProvider == .appTools)
+        account.webChecks["first|test|low"] = .init(model: "test", effort: "low", passed: true, seconds: 2, date: Date(), detail: "Verified")
+        account.chooseWebSearch(.model); #expect(account.effectiveSearchProvider == .model)
+        account.chooseReasoning("high"); #expect(account.effectiveSearchProvider == .appTools)
+        account.chooseReasoning("low"); #expect(account.effectiveSearchProvider == .model)
+        account.selectedID = "other"; account.restoreReasoning(); #expect(account.effectiveSearchProvider == .appTools)
+        account.selectedID = "first"; account.restoreReasoning()
+        account.webChecks["first|test|low"] = .init(model: "test", effort: "low", passed: true, seconds: 2, date: Date(timeIntervalSinceNow: -8 * 86400), detail: "Expired")
+        #expect(account.effectiveSearchProvider == .appTools)
     }
 }
