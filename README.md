@@ -1,6 +1,6 @@
 # Local Voice
 
-A native SwiftUI Mac app for an interruptible, on-device voice conversation.
+A native SwiftUI Mac app for an interruptible voice conversation with local speech and a choice of Local Qwen or ChatGPT text models.
 
 ## Run
 
@@ -9,6 +9,18 @@ Open `realtime-voice-llm-local.xcodeproj` in Xcode and run the app target on **M
 The first launch downloads Qwen3.5-4B (4-bit), Parakeet Realtime EOU 120M, Silero VAD and Kokoro-82M Core ML assets. Allow several minutes for downloads and Core ML compilation. The setup screen shows the current stage; failed setup can be retried. Downloads are cached in the app's sandbox Application Support/LocalVoice/Models directory. The native Core ML Kokoro assets are separate from an existing Python/MLX installation.
 
 Click **Start call** and grant microphone access. Speak English, pause to finish a turn, and speak over the AI to interrupt. The microphone remains active during playback. Escape or the stop button also interrupts. Use macOS Sound settings to choose the input/output device; restart a call after changing devices.
+
+## ChatGPT option
+
+Choose **ChatGPT** on the call screen, open **Connect account**, then click **Continue with ChatGPT**. Complete sign-in and plan-usage consent in your browser. The app retrieves the models available to that account; choose a text model in Call settings, close settings, then start a call. Local Qwen remains available. Changing provider, account or model ends the call and clears its in-memory conversation.
+
+This uses the official [Sign in with ChatGPT flow for locally hosted apps](https://developers.openai.com/siwc/token-sharing-open-source), public Responses API and your eligible ChatGPT plan. Eligibility, workspace permissions and plan/app allowances apply. Manage limits and access at [ChatGPT Settings → Usage](https://chatgpt.com/settings/usage). The app never reads Codex credentials and does not require an API key. General commercial distribution is outside this local prototype's scope and may require separate OpenAI onboarding.
+
+OAuth uses system-browser login, a temporary listener bound only to `127.0.0.1`, PKCE S256, state and nonce validation, RS256 ID-token signature validation, and Keychain credential storage. Each account registration retains its own issued client ID and verified identity. Refreshes are serialized, rotating tokens are saved together, and sign-out attempts revocation before clearing local tokens. Saved account/client mappings and this installation's opaque host ID remain for reauthorization. No tokens are written to logs or the repository.
+
+In ChatGPT mode, conversation text and tool results go to OpenAI. Speech recognition, voice activity detection, Kokoro and microphone audio remain local. Streaming cloud requests and queued speech are cancelled when you interrupt. Search and arithmetic tools still execute on the Mac. No shell or file-access tools are exposed.
+
+Both providers receive instructions to interpret speech transcripts using conversation context, quietly resolve obvious misheard words, and ask a brief clarification if the meaning remains uncertain. They do not critique pronunciation unless asked.
 
 ## Features
 
@@ -23,13 +35,13 @@ Click **Start call** and grant microphone access. Speak English, pause to finish
 - Local arithmetic and date/time tools; optional DuckDuckGo HTML search and public HTTPS page reading.
 - Read-only tool allowlist, strict arithmetic parser, bounded tool loops, network timeouts and response limits.
 
-All model inference stays in the app. Web search sends the query to DuckDuckGo and reading a result contacts that site. Disable **Web search** for offline conversations once model assets are cached. Search may be blocked by the provider; the app reports failure rather than fabricating results. No API key, Ollama, external server or Python runtime is needed.
+In Local Qwen mode, all model inference stays in the app. Web search sends the query to DuckDuckGo and reading a result contacts that site. Choose **Local Qwen** and disable **Web search** for offline conversations once model assets are cached. Search may be blocked by the provider; the app reports failure rather than fabricating results. No API key, Ollama, external server or Python runtime is needed.
 
 Microphone audio is processed in memory, not saved. Transcripts remain in memory until cleared or the app quits. The copy button writes text to the clipboard only when requested.
 
 ## Verification
 
-`LocalVoiceTests` covers text chunk boundaries, arithmetic, URL restrictions, tool availability and limits, and interruption state. Launch with `--self-test` for a real-model check: Kokoro generates a known sentence, Parakeet transcribes it, Qwen calls the calculator and cancellation is exercised. The report and generated test audio are written to Application Support/LocalVoice, inside the app sandbox, and the report appears in Call settings. Add `--audio-test` alongside `--self-test` to verify live microphone capture and speaker playback, then inject synthetic speech into the VAD to verify that it cancels queued playback. This hardware check plays a brief test phrase and requires microphone access.
+`ChatGPTTests` verifies PKCE, callback state/client binding, signed identity tokens, model catalogs, SSE framing, plan-compatible tools, and real loopback callbacks. Mocked streaming tests cover completion, failures after partial text, interrupted connections and network cancellation, without using an account or spending plan usage. `LocalVoiceTests` covers text chunk boundaries, arithmetic, URL restrictions, tool availability and limits, and interruption state. Launch with `--self-test` for a real-model check: Kokoro generates a known sentence, Parakeet transcribes it, Qwen calls the calculator and cancellation is exercised. The report and generated test audio are written to Application Support/LocalVoice, inside the app sandbox, and the report appears in Call settings. Add `--audio-test` alongside `--self-test` to verify live microphone capture and speaker playback, then inject synthetic speech into the VAD to verify that it cancels queued playback. This hardware check plays a brief test phrase and requires microphone access.
 
 Real speaker/microphone behaviour depends on device routing, room acoustics, distance and volume. Validate using the MacBook's speakers and your own voice; adjust the pause setting if turns finish too quickly.
 
@@ -39,6 +51,10 @@ Real speaker/microphone behaviour depends on device routing, room acoustics, dis
 - `VoiceAudio.swift`: voice-processing audio I/O and streaming STT/VAD.
 - `LocalModels.swift`: model download/loading, tokenizer adapter and local LLM.
 - `LocalTools.swift`: validated read-only tool dispatch.
+- `ChatGPTAccount.swift` and `ChatGPTSecurity.swift`: account lifecycle, Keychain, OAuth and identity validation.
+- `ChatGPTBrain.swift`: cancellable Responses streaming and local tool loop.
+- `ChatGPTSettings.swift`: account and model selection.
+- `VoiceInstructions.swift`: shared voice and imperfect-transcription instructions.
 - `ContentView.swift`: call controls and live transcript.
 - `IntegrationCheck.swift`: opt-in real-model checks.
 
@@ -46,7 +62,7 @@ Dependencies are pinned by the Xcode package lockfile. Model receipts verify exp
 
 ## Verified on this Mac
 
-Release build and 9 unit tests pass on the M3 MacBook Air. The real-model check verifies streamed STT, Kokoro synthesis, calculator tool calling, cached follow-up context and cancellation. A live call successfully played responses with echo cancellation, performed DuckDuckGo search, and stopped playback using the interrupt control. Observed time to first audio was 3.4 seconds for a new greeting and 1.2 seconds for a cached follow-up. These are individual measurements, not guarantees; tools and longer context add latency. The hardware integration check received 81,600 microphone frames and stopped queued playback in 0.0039 seconds after the synthetic VAD speech callback. This measures the stop operation, not total speech-detection latency. Human speech-over-playback behaviour still needs a real conversation in your room.
+The original local implementation passed its Release build and 9 unit tests on the M3 MacBook Air. The real-model check verifies streamed STT, Kokoro synthesis, calculator tool calling, cached follow-up context and cancellation. A live call successfully played responses with echo cancellation, performed DuckDuckGo search, and stopped playback using the interrupt control. Observed time to first audio was 3.4 seconds for a new greeting and 1.2 seconds for a cached follow-up. These are individual measurements, not guarantees; tools and longer context add latency. The hardware integration check received 81,600 microphone frames and stopped queued playback in 0.0039 seconds after the synthetic VAD speech callback. This measures the stop operation, not total speech-detection latency. The user subsequently confirmed live conversation worked after the microphone fix. Cloud account login and live cloud responses require user sign-in; mocked tests do not establish account eligibility or live latency.
 
 ## Microphone troubleshooting
 

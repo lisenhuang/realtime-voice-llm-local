@@ -3,8 +3,14 @@ import AVFoundation
 import FluidAudio
 import Observation
 
+enum ModelProvider: String, CaseIterable { case local, chatGPT }
+
 @Observable @MainActor
 final class CallModel {
+    var provider = ModelProvider(rawValue: UserDefaults.standard.string(forKey: "modelProvider") ?? "") ?? .local
+    let chatGPT = ChatGPTAccount()
+    let cloudBrain = ChatGPTBrain()
+    var canStart: Bool { ready && (provider == .local || chatGPT.canUse) }
     var ready = false
     var preparing = false
     var active = false
@@ -54,6 +60,7 @@ final class CallModel {
     private var wasSpeakingAtStart = false
 
     init() {
+        chatGPT.onChange = { [weak self] in self?.endCall(); self?.newConversation() }
         audio.onPhrasePlayed = { [weak self] text in
             guard let self, let id = self.assistantID, let i = self.transcript.firstIndex(where: { $0.id == id }) else { return }
             self.transcript[i].spoken += (self.transcript[i].spoken.isEmpty ? "" : " ") + text
@@ -79,17 +86,27 @@ final class CallModel {
             let report: @Sendable (String) -> Void = { [weak self] value in
                 Task { @MainActor [weak self] in self?.setupStatus = value }
             }
-            try await brain.load(status: report)
+            await chatGPT.restore()
+            if provider == .local { try await brain.load(status: report) }
             try await speech.load(status: report)
             setupStatus = "Preparing Kokoro voices. First use can take a few minutes…"
             try await tts.initialize(preloadVoices: ["af_heart", "af_bella", "am_adam", "bf_emma"])
-            setupStatus = "Warming up the language model…"
-            try await brain.respond(prompt: "Say hello.", history: [], webEnabled: true, onToken: { _ in }, onTool: { _ in })
+            if provider == .local {
+                setupStatus = "Warming up the language model…"
+                try await brain.respond(prompt: "Say hello.", history: [], webEnabled: true, onToken: { _ in }, onTool: { _ in })
+            }
             setupStatus = "Warming up your voice…"
             _ = try await tts.synthesizeDetailed(text: "Ready when you are.", voice: "af_heart")
-            ready = true; status = "Ready when you are"; setupStatus = "All models are on your Mac"
+            ready = true; status = "Ready when you are"; setupStatus = "Local speech is ready"
         } catch { self.error = error.localizedDescription; status = "Setup needs attention" }
         preparing = false
+    }
+    func changeProvider(_ selected: ModelProvider) async {
+        guard selected != provider, !preparing else { return }
+        endCall(); newConversation(); provider = selected
+        UserDefaults.standard.set(selected.rawValue, forKey: "modelProvider")
+        ready = false
+        await prepare()
     }
     func importModel() async {
         guard !preparing, !ready else { return }
@@ -122,7 +139,7 @@ final class CallModel {
         } catch { self.error = error.localizedDescription }
     }
     func startCall() async {
-        guard ready, !active, !checking else { return }
+        guard canStart, !active, !checking else { return }
         error = nil
         let allowed = await AVCaptureDevice.requestAccess(for: .audio)
         guard allowed else { error = "Allow microphone access in System Settings → Privacy & Security → Microphone, then start again."; return }
@@ -238,11 +255,17 @@ final class CallModel {
             guard let self else { return }
             let accumulator = ResponsePhrases()
             do {
-                try await self.brain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
-                    onToken: { [weak self] token in
-                        let ready = await accumulator.append(token)
-                        await self?.receiveToken(token, phrases: ready, turn: turn)
-                    }, onTool: { [weak self] label in await self?.toolStarted(label, turn: turn) })
+                let onToken: @Sendable (String) async -> Void = { [weak self] token in
+                    let ready = await accumulator.append(token)
+                    await self?.receiveToken(token, phrases: ready, turn: turn)
+                }
+                let onTool: @Sendable (String) async -> Void = { [weak self] label in await self?.toolStarted(label, turn: turn) }
+                if self.provider == .chatGPT {
+                    try await self.cloudBrain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
+                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, onToken: onToken, onTool: onTool)
+                } else {
+                    try await self.brain.respond(prompt: text, history: previous, webEnabled: self.webEnabled, onToken: onToken, onTool: onTool)
+                }
                 let last = await accumulator.finish()
                 guard self.turnID == turn else { return }
                 if !last.isEmpty { self.phraseContinuation?.yield(last) }

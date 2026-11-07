@@ -28,6 +28,11 @@ struct ContentView: View {
         .onChange(of: model.echoCancellation) { Task { await model.changeEchoCancellation() } }
         .onChange(of: model.webEnabled) { if !model.webEnabled { model.interrupt() } }
         .sheet(isPresented: $showSettings) { settings }
+        .alert("Using your ChatGPT plan", isPresented: Binding(get: { model.chatGPT.showWelcome }, set: { model.chatGPT.showWelcome = $0 })) {
+            Button("Got it") { model.chatGPT.welcomeSeen() }
+        } message: {
+            Text("Local Voice can now use your ChatGPT plan. Conversation text goes to OpenAI; speech recognition and voice playback stay on your Mac. Manage allowances in ChatGPT Settings → Usage.")
+        }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
@@ -85,7 +90,7 @@ struct ContentView: View {
                                 .font(.system(size: 15, weight: .semibold)).frame(width: 150, height: 46)
                                 .foregroundStyle(model.active ? Color.white : canvas)
                                 .background(model.active ? Color.red.opacity(0.7) : mint, in: Capsule())
-                        }.buttonStyle(.plain).disabled(!model.ready || model.checking).accessibilityIdentifier("startCall")
+                        }.buttonStyle(.plain).disabled(!model.canStart || model.checking).accessibilityIdentifier("startCall")
                         if model.active {
                             Button { model.interrupt() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }
                                 .buttonStyle(.plain).background(.white.opacity(0.08), in: Circle()).help("Stop AI speech (Escape)")
@@ -95,7 +100,7 @@ struct ContentView: View {
                 }
             }.frame(maxWidth: .infinity)
             Spacer(minLength: 24)
-            if !model.ready && !model.preparing {
+            if model.provider == .local && !model.ready && !model.preparing {
                 Button("Use a downloaded model…") { Task { await model.importModel() } }
                     .font(.caption).tint(mint).padding(.bottom, 12)
             }
@@ -109,18 +114,32 @@ struct ContentView: View {
                 }.padding(12).background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)).padding(.bottom, 15)
             }
             VStack(spacing: 12) {
+                Picker("AI model", selection: Binding(get: { model.provider }, set: { selection in Task { await model.changeProvider(selection) } })) {
+                    Text("Local Qwen").tag(ModelProvider.local)
+                    Text("ChatGPT").tag(ModelProvider.chatGPT)
+                }.pickerStyle(.segmented).disabled(model.preparing || model.chatGPT.busy)
                 HStack {
-                    Label("On-device AI", systemImage: "lock.shield").foregroundStyle(mint)
+                    Label(model.provider == .local ? "Qwen3.5 · 4B" : model.chatGPT.modelName,
+                          systemImage: model.provider == .local ? "lock.shield" : "cloud").foregroundStyle(mint).lineLimit(1)
                     Spacer()
-                    Text("Qwen3.5 · 4B").foregroundStyle(.secondary)
+                    if model.provider == .chatGPT {
+                        Button(model.chatGPT.connected ? "Account & model" : "Connect account") { showSettings = true }
+                    }
                 }.font(.system(size: 11))
+                if model.provider == .chatGPT && model.chatGPT.connected {
+                    HStack {
+                        Text("Using ChatGPT plan")
+                        Spacer()
+                        Link("Manage usage", destination: URL(string: "https://chatgpt.com/settings/usage")!)
+                    }.font(.system(size: 10)).foregroundStyle(.secondary)
+                }
                 HStack {
                     Text("Web search").font(.system(size: 12))
                     Spacer()
                     Toggle("Web search", isOn: $model.webEnabled).labelsHidden().toggleStyle(.switch).controlSize(.mini).tint(mint)
                 }
-                Text(model.webEnabled ? "Only search queries and page requests go online." : "Offline conversation. No web requests during calls.")
-                    .font(.system(size: 10)).foregroundStyle(.white.opacity(0.35)).frame(maxWidth: .infinity, alignment: .leading)
+                Text(model.provider == .chatGPT ? "Text is sent to OpenAI. Speech stays on your Mac." : (model.webEnabled ? "Only search queries and page requests go online." : "Offline conversation. No web requests during calls."))
+                    .font(.system(size: 10)).foregroundStyle(.white.opacity(0.45)).frame(maxWidth: .infinity, alignment: .leading)
             }.padding(17).background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
         }.padding(28)
     }
@@ -193,8 +212,11 @@ struct ContentView: View {
         }.background(.white.opacity(0.015))
     }
     private var settings: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 22) {
             HStack { Text("Call settings").font(.title2.bold()); Spacer(); Button("Done") { showSettings = false } }
+            ChatGPTSettings(account: model.chatGPT)
+            Divider()
             Picker("Voice", selection: $model.voice) {
                 Text("Heart · American English").tag("af_heart")
                 Text("Bella · American English").tag("af_bella")
@@ -213,8 +235,8 @@ struct ContentView: View {
             Toggle("Echo cancellation", isOn: $model.echoCancellation)
             Text("Keep on with speakers. Turn off only when using headphones. Changing this restarts the call.").font(.caption).foregroundStyle(.secondary)
             Divider()
-            Text("Qwen3.5 4B · Parakeet 120M · Kokoro 82M").font(.callout)
-            Text("English speech recognition. All models run inside this app. Audio is not recorded to disk. Conversations remain in memory until you clear them or quit.").font(.caption).foregroundStyle(.secondary)
+            Text("Local speech: Parakeet 120M · Kokoro 82M").font(.callout)
+            Text("English speech recognition. Audio is not recorded to disk. Conversation history is held in memory until you clear it or quit. Both models interpret possible transcription mistakes using the conversation context.").font(.caption).foregroundStyle(.secondary)
             Text("Uses the microphone and speakers selected in macOS Sound settings. The microphone stays active during playback.").font(.caption).foregroundStyle(.secondary)
             if model.active {
                 Text("Input: \(model.microphoneFormat) · peak \(model.rawMicrophoneDB, specifier: "%.0f") dBFS\nMicrophone: \(model.microphoneDB, specifier: "%.0f") dBFS · speech confidence: \(model.speechProbability * 100, specifier: "%.0f")%")
@@ -225,7 +247,8 @@ struct ContentView: View {
             if !model.selfTestReport.isEmpty {
                 ScrollView { Text(model.selfTestReport).font(.system(size: 10, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 160)
             }
-        }.padding(28).frame(width: 460).tint(mint)
+        }.padding(28)
+        }.frame(width: 540, height: 740).tint(mint)
     }
 }
 
