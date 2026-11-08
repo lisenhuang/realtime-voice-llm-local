@@ -35,6 +35,10 @@ struct ChatGPTSettings: View {
                             Text(ChatGPTModel.effortLabel(effort)).tag(effort)
                         }
                     }.disabled(account.busy || account.testingWeb || (account.selectedModel?.reasoningLevels.isEmpty ?? true))
+                    if account.selectedModel?.reasoningLevels.contains("none") == true {
+                        Text("None turns off reasoning. Model default lets the model use its default effort. None can reduce delay, with a trade-off on harder questions.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Text((account.selectedModel?.reasoningLevels.isEmpty ?? true)
                          ? "This model does not advertise adjustable reasoning levels. Using its default."
                          : "Lower levels usually reply faster. Higher levels spend more time thinking. Saved for this model and account; applies from your next reply.")

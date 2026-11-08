@@ -326,11 +326,14 @@ final class ChatGPTAccount {
         guard let models = object?["models"] as? [[String: Any]] else { throw VoiceError("ChatGPT returned an unrecognised model catalog.") }
         return models.compactMap { item in
             guard item["visibility"] as? String == "list", let slug = item["slug"] as? String, !slug.isEmpty, let name = item["display_name"] as? String else { return nil }
-            // Catalog capabilities are authoritative; app-server-only efforts
-            // (for example ultra) are not public Responses effort values.
+            // Filter out app-server-only efforts (for example ultra). The
+            // account catalog can omit a documented public Responses option.
             let raw = item["supported_reasoning_levels"] as? [[String: Any]] ?? []
             var seen = Set<String>()
-            let levels = raw.compactMap { $0["effort"] as? String }.filter { ChatGPTModel.apiReasoningLevels.contains($0) && seen.insert($0).inserted }
+            var levels = raw.compactMap { $0["effort"] as? String }.filter { ChatGPTModel.apiReasoningLevels.contains($0) && seen.insert($0).inserted }
+            // Verified for this exact model, not inferred for other GPT variants:
+            // https://developers.openai.com/api/docs/models/gpt-6-luna
+            if slug == "gpt-6-luna", !levels.contains("none") { levels.insert("none", at: 0) }
             return .init(id: slug, name: name, reasoningLevels: levels)
         }
     }

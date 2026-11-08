@@ -164,6 +164,31 @@ struct ChatGPTStreamTests {
 }
 
 struct ReasoningAndWeatherTests {
+    @Test func lunaIncludesDocumentedNoneWithoutAddingItToOtherModels() throws {
+        let data = Data(#"{"models":[{"slug":"gpt-6-luna","display_name":"Luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]},{"slug":"gpt-6-astra","display_name":"Astra","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]}]}"#.utf8)
+        let models = try ChatGPTAccount.parseModels(data)
+        #expect(models[0].reasoningLevels == ["none", "low", "high"])
+        #expect(models[1].resolvedEffort("none") == nil)
+        let body = ChatGPTBrain.requestBody(model: models[0].id, input: [], web: false, reasoningEffort: models[0].resolvedEffort("none"))
+        #expect((body["reasoning"] as? [String: String])?["effort"] == "none")
+        #expect(ChatGPTBrain.requestBody(model: models[0].id, input: [], web: false)["reasoning"] == nil)
+        let advertised = Data(#"{"models":[{"slug":"gpt-6-luna","display_name":"Luna","visibility":"list","supported_reasoning_levels":[{"effort":"none"},{"effort":"none"},{"effort":"low"}]}]}"#.utf8)
+        #expect(try ChatGPTAccount.parseModels(advertised)[0].reasoningLevels == ["none", "low"])
+    }
+    @Test @MainActor func lunaNoneSurvivesReloadAndRemainsDistinctFromDefault() throws {
+        let suite = "LocalVoiceTests." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let data = Data(#"{"models":[{"slug":"gpt-6-luna","display_name":"Luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]}]}"#.utf8)
+        let account = ChatGPTAccount(preferences: defaults)
+        account.selectedID = "test"; account.models = try ChatGPTAccount.parseModels(data)
+        account.chooseModel("gpt-6-luna"); account.chooseReasoning("none")
+        let restored = ChatGPTAccount(preferences: defaults)
+        restored.selectedID = "test"; restored.models = try ChatGPTAccount.parseModels(data)
+        restored.chooseModel("gpt-6-luna")
+        #expect(restored.reasoningChoice == "none" && restored.reasoningEffort == "none")
+        restored.chooseReasoning("default")
+        #expect(restored.reasoningChoice == "default" && restored.reasoningEffort == nil)
+    }
     @Test func catalogFiltersUnsupportedEffortsAndDefaultOmitsParameter() throws {
         let data = Data(#"{"models":[{"slug":"test-model","display_name":"Test","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"},{"effort":"low"}]}]}"#.utf8)
         let model = try #require(ChatGPTAccount.parseModels(data).first)
