@@ -23,8 +23,10 @@ struct ContentView: View {
             }
             await model.prepare()
             if ProcessInfo.processInfo.arguments.contains("--self-test"), model.ready { await IntegrationCheck.run(model: model) }
+            if ProcessInfo.processInfo.arguments.contains("--balanced-test"), model.ready { await BalancedIntegrationCheck.run(model: model); showSettings = true }
         }
         .onDisappear { model.endCall() }
+        .onChange(of: model.balancedPreparation) { model.changePreparationSetting() }
         .onChange(of: model.echoCancellation) { Task { await model.changeEchoCancellation() } }
         .onChange(of: model.webEnabled) { if !model.webEnabled { model.interrupt() } }
         .sheet(isPresented: $showSettings) { settings }
@@ -219,6 +221,11 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack { Text("Call settings").font(.title2.bold()); Spacer(); Button("Done") { showSettings = false } }
             ChatGPTSettings(account: model.chatGPT)
+            Divider()
+            Toggle("Prepare while I speak · Balanced", isOn: $model.balancedPreparation)
+            Text("For ChatGPT calls: prepare stable phrases silently, at most once every 10 seconds and six times per spoken turn. May use extra ChatGPT allowance and read-only web lookups. Audio stays local. Replies play only after your final words are confirmed; changed or failed drafts fall back to a fresh reply.")
+                .font(.caption).foregroundStyle(.secondary)
+            if !model.preparationStatus.isEmpty { Text(model.preparationStatus).font(.caption).foregroundStyle(mint) }
             Divider()
             Picker("Voice", selection: $model.voice) {
                 Text("Heart · American English").tag("af_heart")

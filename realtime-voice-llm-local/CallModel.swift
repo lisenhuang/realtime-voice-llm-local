@@ -34,6 +34,13 @@ final class CallModel {
     var voice = "af_heart"
     var speed = 1.0
     var pause = 0.9
+    var balancedPreparation = UserDefaults.standard.object(forKey: "balancedPreparation") as? Bool ?? true
+    var preparationStatus = ""
+    private var preparation: SpeechPreparation?
+    private var replyingPreparation: SpeechPreparation?
+    private var preparationConfig: SpeechPreparationConfig {
+        .init(profile: chatGPT.selectedID, model: chatGPT.modelID, effort: chatGPT.reasoningEffort, web: webEnabled, search: chatGPT.effectiveSearchProvider, voice: voice, speed: Float(speed))
+    }
     var typedText = ""
     var transcript: [TranscriptLine] = []
     var tools: [String] = []
@@ -185,6 +192,7 @@ final class CallModel {
     }
     func toggleMute() {
         muted.toggle(); partial = ""; level = 0
+        if muted { preparation?.cancel(); preparation = nil; preparationStatus = "" }
         if !speaking && !thinking { status = muted ? "Microphone muted" : "Listening" }
     }
     private func updateMicrophone(rms: Float, probability: Float, call: UUID) {
@@ -201,26 +209,48 @@ final class CallModel {
         }
     }
     private func updateLevel(_ value: Float, call: UUID) { if callID == call, !muted { level = value } }
-    private func setPartial(_ value: String, call: UUID) { if callID == call, active, !muted { partial = value } }
+    private func setPartial(_ value: String, call: UUID) {
+        guard callID == call, active, !muted else { return }
+        partial = value
+        preparation?.update(value)
+        preparationStatus = preparation?.status ?? ""
+    }
+    func changePreparationSetting() {
+        UserDefaults.standard.set(balancedPreparation, forKey: "balancedPreparation")
+        if !balancedPreparation { preparation?.cancel(); preparation = nil; preparationStatus = "" }
+    }
+    private func makePreparation() -> SpeechPreparation? {
+        guard balancedPreparation, provider == .chatGPT, chatGPT.canUse else { return nil }
+        let config = preparationConfig
+        let engine = SpeechDraftSocket(config: config, history: transcript, account: chatGPT)
+        let tts = self.tts
+        return SpeechPreparation(config: config, engine: engine) { phrase in
+            try await tts.synthesizeDetailed(text: phrase, voice: config.voice, speed: config.speed).samples
+        }
+    }
     private func speechStarted(call: UUID) {
         guard callID == call, active, !muted else { return }
         wasSpeakingAtStart = speaking || thinking
         interrupt(mark: true)
         status = "Listening"; partial = ""
+        preparation = makePreparation()
     }
     private func receivedSpeech(_ text: String, call: UUID) {
         guard callID == call, active, !muted else { return }
         partial = ""
-        submit(text)
+        let prepared = preparation; preparation = nil
+        if prepared?.config == preparationConfig { submit(text, prepared: prepared) }
+        else { prepared?.cancel(); submit(text) }
     }
     func sendTyped() {
         let text = typedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard active, !text.isEmpty else { return }
         typedText = ""; submit(text)
     }
-    func submit(_ text: String) {
+    func submit(_ text: String, prepared: SpeechPreparation? = nil) {
         guard active else { return }
         interrupt(mark: true)
+        replyingPreparation = prepared
         let previous = transcript
         transcript.append(TranscriptLine(role: "user", text: text))
         let answer = TranscriptLine(role: "assistant", text: "")
@@ -242,10 +272,12 @@ final class CallModel {
                         try await Task.sleep(for: .milliseconds(30))
                         guard self.turnID == turn else { return }
                     }
-                    let audio = try await self.tts.synthesizeDetailed(text: phrase, voice: chosenVoice, speed: chosenSpeed)
+                    let samples: [Float]
+                    if let cached = await prepared?.cachedAudio(for: phrase) { samples = cached }
+                    else { samples = try await self.tts.synthesizeDetailed(text: phrase, voice: chosenVoice, speed: chosenSpeed).samples }
                     try Task.checkCancellation()
                     guard self.turnID == turn, self.active else { return }
-                    try self.audio.enqueue(samples: audio.samples, text: phrase)
+                    try self.audio.enqueue(samples: samples, text: phrase)
                 }
                 guard self.turnID == turn else { return }
                 self.synthesisFinished = true; self.finishIfIdle()
@@ -264,9 +296,30 @@ final class CallModel {
                 }
                 let onTool: @Sendable (String) async -> Void = { [weak self] label in await self?.toolStarted(label, turn: turn) }
                 if self.provider == .chatGPT {
-                    try await self.cloudBrain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
-                        account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, reasoningEffort: chosenReasoning, searchProvider: chosenSearch,
-                        onCitations: { [weak self] citations in await self?.receiveCitations(citations, turn: turn) }, onToken: onToken, onTool: onTool)
+                    var useNormalPath = prepared == nil
+                    if let prepared {
+                        do {
+                            try await prepared.reply(to: text) { [weak self] event in
+                                switch event {
+                                case .text(let token): await onToken(token)
+                                case .tool(let label): await onTool(label)
+                                case .citations(let citations): await self?.receiveCitations(citations, turn: turn)
+                                }
+                            }
+                            self.preparationStatus = prepared.reused ? "Used a reply prepared while you spoke" : "Updated the prepared reply with your final words"
+                        } catch {
+                            try Task.checkCancellation()
+                            guard self.turnID == turn else { return }
+                            prepared.cancel()
+                            if self.tokenStarted { throw error }
+                            useNormalPath = true; self.preparationStatus = "Used the final transcript; no early draft was played"
+                        }
+                    }
+                    if useNormalPath {
+                        try await self.cloudBrain.respond(prompt: text, history: previous, webEnabled: self.webEnabled,
+                            account: self.chatGPT, profile: self.chatGPT.selectedID, model: self.chatGPT.modelID, reasoningEffort: chosenReasoning, searchProvider: chosenSearch,
+                            onCitations: { [weak self] citations in await self?.receiveCitations(citations, turn: turn) }, onToken: onToken, onTool: onTool)
+                    }
                 } else {
                     try await self.brain.respond(prompt: text, history: previous, webEnabled: self.webEnabled, onToken: onToken, onTool: onTool)
                 }
@@ -299,6 +352,9 @@ final class CallModel {
         if !speaking { status = label.hasPrefix("Searching") || label.hasPrefix("Reading") ? "Searching the web" : "Using a tool" }
     }
     func interrupt(mark: Bool = true) {
+        preparation?.cancel(); preparation = nil
+        replyingPreparation?.cancel(); replyingPreparation = nil
+        preparationStatus = ""
         turnID = UUID()
         responseTask?.cancel(); responseTask = nil
         speechTask?.cancel(); speechTask = nil

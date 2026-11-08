@@ -154,6 +154,7 @@ actor SpeechInput {
     private var silence = 0.0
     private var duration = 0.0
     private var previousPartial = ""
+    private var transcriptSegments = SpeechTranscriptSegments()
     private var wasMuted = false
 
     init() {
@@ -169,6 +170,7 @@ actor SpeechInput {
     func reset() async {
         await asr.reset()
         vadState = .initial(); pending = []; preroll = []; utterance = false
+        transcriptSegments = SpeechTranscriptSegments()
         voicedFrames = 0; silence = 0; duration = 0; previousPartial = ""; converter = nil
     }
     func feed(_ captured: CapturedAudio, muted: Bool, pause: Double,
@@ -218,14 +220,20 @@ actor SpeechInput {
             } else { try await recognise(frame) }
             duration += frameDuration
             silence = speech ? 0 : silence + frameDuration
-            let partial = await asr.getPartialTranscript().trimmingCharacters(in: .whitespacesAndNewlines)
+            let partial = transcriptSegments.combining(await asr.getPartialTranscript())
             if partial != previousPartial, !partial.isEmpty { previousPartial = partial; await onPartial(partial) }
             let ended = await asr.eouDetected
-            if (ended && silence > min(0.5, pause)) || silence > pause || duration > 35 {
-                let final = try await asr.finish().trimmingCharacters(in: .whitespacesAndNewlines)
+            if SpeechTranscriptSegments.turnEnded(eou: ended, silence: silence, pause: pause) {
+                let final = transcriptSegments.finish(try await asr.finish())
                 await asr.reset()
                 utterance = false; voicedFrames = 0; previousPartial = ""; preroll = []
                 if !final.isEmpty { await onFinal(final) }
+            } else if duration >= 25 {
+                // Reset ASR state without ending a continuous spoken turn.
+                transcriptSegments.append(try await asr.finish())
+                await asr.reset(); duration = 0
+                let partial = transcriptSegments.committed
+                if partial != previousPartial { previousPartial = partial; await onPartial(partial) }
             }
         }
     }
