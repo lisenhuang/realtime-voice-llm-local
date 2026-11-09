@@ -6,13 +6,7 @@ A native SwiftUI app with live transcripts, local voices, and your choice of a l
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A["You speak<br/>Parakeet transcribes locally"] --> B["Qwen · on your Mac"]
-    A --> C["ChatGPT · cloud"]
-    B --> D["You hear the reply<br/>Kokoro speaks locally"]
-    C --> D
-```
+![Voice flow: local Parakeet transcription, local Qwen or cloud ChatGPT, then local Kokoro speech.](docs/images/voice-flow.svg)
 
 Speak over a reply to stop it. Your microphone stays active during playback.
 
@@ -56,6 +50,12 @@ ChatGPT uses your eligible plan through [Sign in with ChatGPT](https://developer
 | **Echo cancellation** | Keep enabled with speakers; optional with headphones. |
 
 Also includes mute, typed messages, copy transcript, and local calculator/time tools. Search tests use your ChatGPT allowance and end any active call.
+
+## 🎧 Speech recognition
+
+**STT (speech-to-text): Parakeet Realtime EOU 120M**, running locally through FluidAudio / Core ML with 160 ms streaming chunks. The current app supports English speech. Silero VAD detects when you are speaking; Kokoro handles text-to-speech.
+
+**Known limitation:** transcription is not yet accurate enough for consistently reliable conversations. It can mishear words and affect the AI's answer. The AI uses context to interpret likely mistakes, but cannot always correct them. Check the live transcript and repeat or type your message when needed.
 
 ## 🔒 Privacy
 
